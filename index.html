@@ -1002,146 +1002,9 @@
     .logout-btn:hover { background: rgba(255,255,255,.22); }
     .hidden { display: none !important; }
 
-
-    /* Pulido móvil: scroll estable y ajuste real a la pantalla */
-    html,
-    body {
-      height: auto !important;
-      min-height: 100% !important;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior-y: auto !important;
-      touch-action: pan-y;
-    }
-
-    body.modal-open,
-    body.login-open,
-    body.loading-open {
-      overflow: hidden !important;
-      touch-action: none;
-    }
-
-    #app {
-      min-height: 100dvh;
-      overflow: visible !important;
-    }
-
-    main,
-    .tables,
-    .table-card {
-      overflow: visible !important;
-    }
-
-    .clickable-row,
-    .clickable-row td,
-    .table-wrap,
-    tbody,
-    tr,
-    td {
-      touch-action: pan-y;
-    }
-
-    @media (max-width: 760px) {
-      body {
-        position: static !important;
-      }
-
-      header {
-        position: relative;
-        z-index: 1;
-      }
-
-      main {
-        min-height: auto !important;
-        overflow: visible !important;
-      }
-
-      .toolbar,
-      .grid,
-      .tables,
-      .table-card,
-      .table-wrap {
-        min-width: 0 !important;
-        max-width: 100% !important;
-      }
-
-      .table-wrap {
-        overflow: visible !important;
-        max-height: none !important;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      table,
-      tbody,
-      tr,
-      td {
-        max-width: 100% !important;
-      }
-
-      tr {
-        touch-action: pan-y;
-      }
-
-      td {
-        overflow-wrap: anywhere;
-        word-break: break-word;
-      }
-
-      .suggestions.show {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-        touch-action: pan-y;
-      }
-
-      .auth-overlay {
-        align-items: flex-start;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        touch-action: pan-y;
-      }
-
-      .auth-card {
-        margin-block: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-bottom));
-      }
-
-      .modal-backdrop.show {
-        overflow: hidden;
-        touch-action: none;
-      }
-
-      .modal-card {
-        max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-      }
-
-      .modal-body {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-        touch-action: pan-y;
-      }
-    }
-
-    @media (max-width: 360px) {
-      main {
-        padding-left: max(8px, env(safe-area-inset-left));
-        padding-right: max(8px, env(safe-area-inset-right));
-      }
-
-      .toolbar,
-      .table-card,
-      .kpi {
-        border-radius: 14px;
-      }
-
-      td {
-        padding-left: 10px;
-        padding-right: 10px;
-      }
-    }
-
   </style>
 </head>
-<body class="loading-open">
+<body>
   <div id="loadingOverlay" aria-live="polite" aria-busy="true">
     <div class="loading-box">
       <div class="loader" aria-hidden="true"></div>
@@ -1307,7 +1170,6 @@
     today.setHours(0,0,0,0);
 
     function showApp() {
-      document.body.classList.remove("loading-open", "login-open");
       $("loadingOverlay").style.display = "none";
       $("loadingOverlay").setAttribute("aria-busy", "false");
       $("app").style.display = "block";
@@ -1464,8 +1326,6 @@
     }
 
     function showLogin() {
-      document.body.classList.remove("loading-open");
-      document.body.classList.add("login-open");
       $("loadingOverlay").style.display = "none";
       $("loginOverlay").style.display = "flex";
       $("app").style.display = "none";
@@ -1474,7 +1334,6 @@
     }
 
     function hideLoginAndShowApp() {
-      document.body.classList.remove("login-open");
       $("loginOverlay").style.display = "none";
       $("app").style.display = "block";
     }
@@ -1695,12 +1554,12 @@
       $("modalTitle").textContent = `Detalle de cheques - ${selectedClientForDetail}`;
       $("modalSubtitle").textContent = `${rows.length.toLocaleString("es-CL")} cheques visibles para el cliente seleccionado.`;
       $("detailModal").classList.add("show");
-      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
     }
 
     function closeDetailModal() {
       $("detailModal").classList.remove("show");
-      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
     }
 
 
