@@ -1015,6 +1015,98 @@
     .logout-btn:hover { background: rgba(255,255,255,.22); }
     .hidden { display: none !important; }
 
+    /* Corrección scroll móvil: permite deslizar la página completa */
+    html,
+    body {
+      height: auto !important;
+      min-height: 100% !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+    body.modal-open {
+      overflow: hidden !important;
+      touch-action: none;
+    }
+
+    #app {
+      height: auto !important;
+      min-height: 100dvh !important;
+      overflow: visible !important;
+      touch-action: pan-y;
+    }
+
+    main,
+    .tables,
+    .table-card,
+    .table-wrap,
+    table,
+    tbody,
+    tr,
+    td,
+    .card {
+      touch-action: pan-y;
+    }
+
+    #loadingOverlay,
+    #loginOverlay,
+    .auth-overlay {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+
+    .auth-card {
+      max-height: calc(var(--app-height, 100vh) - 36px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        position: static !important;
+        overscroll-behavior-y: auto !important;
+      }
+
+      main {
+        overflow: visible !important;
+      }
+
+      .table-wrap {
+        overflow: visible !important;
+      }
+
+      tbody,
+      tr,
+      td,
+      .clickable-row {
+        touch-action: pan-y;
+      }
+
+      .clickable-row {
+        cursor: pointer;
+      }
+
+      .modal-backdrop.show {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .modal-body {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+      }
+
+      .suggestions.show {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1328,6 +1420,8 @@
     }
 
     function showLogin() {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
       $("loadingOverlay").style.display = "none";
       $("loginOverlay").style.display = "flex";
       $("app").style.display = "none";
@@ -1338,6 +1432,8 @@
     }
 
     function hideLoginAndShowApp() {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
       $("loginOverlay").style.display = "none";
       $("app").style.display = "block";
     }
@@ -1562,12 +1658,12 @@
       $("modalTitle").textContent = `Detalle de cheques - ${selectedClientForDetail}`;
       $("modalSubtitle").textContent = `${rows.length.toLocaleString("es-CL")} cheques visibles para el cliente seleccionado.`;
       $("detailModal").classList.add("show");
-      document.body.style.overflow = "hidden";
+      document.body.classList.add("modal-open");
     }
 
     function closeDetailModal() {
       $("detailModal").classList.remove("show");
-      document.body.style.overflow = "";
+      document.body.classList.remove("modal-open");
     }
 
 
