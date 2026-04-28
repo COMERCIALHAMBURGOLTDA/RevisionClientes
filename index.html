@@ -931,31 +931,6 @@
       line-height: 1.4;
     }
     .auth-form { display: grid; gap: 14px; }
-    .remember-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      user-select: none;
-      color: var(--text);
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.35;
-    }
-    .remember-row input {
-      width: 18px;
-      height: 18px;
-      min-height: 18px;
-      flex: 0 0 auto;
-      accent-color: var(--primary);
-      padding: 0;
-      border-radius: 4px;
-    }
-    .remember-hint {
-      margin-top: -8px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
     .auth-error {
       display: none;
       border: 1px solid #fecaca;
@@ -1026,11 +1001,6 @@
           <label>Contraseña</label>
           <input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
         </div>
-        <label class="remember-row">
-          <input id="rememberLogin" type="checkbox" />
-          <span>Recordar usuario y contraseña en este dispositivo</span>
-        </label>
-        <div class="remember-hint">Úsalo solo en un equipo o celular personal.</div>
         <div id="loginError" class="auth-error">Código o contraseña incorrectos.</div>
         <div class="auth-actions">
           <button id="loginBtn" type="submit">Ingresar</button>
@@ -1160,7 +1130,6 @@
     let allRows = [];
     let users = [];
     let currentUser = null;
-    const REMEMBER_LOGIN_KEY = "revisionEstadoClientesLogin";
     let selectedSearch = null;
     let selectedClientForDetail = "";
 
@@ -1290,47 +1259,11 @@
       $("sessionText").textContent = `${label}: ${currentUser.code}`;
     }
 
-    function getRememberedLogin() {
-      try {
-        const saved = localStorage.getItem(REMEMBER_LOGIN_KEY);
-        return saved ? JSON.parse(saved) : null;
-      } catch (error) {
-        console.error(error);
-        return null;
-      }
-    }
-
-    function saveRememberedLogin(code, password) {
-      try {
-        localStorage.setItem(REMEMBER_LOGIN_KEY, JSON.stringify({ code, password }));
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    function clearRememberedLogin() {
-      try {
-        localStorage.removeItem(REMEMBER_LOGIN_KEY);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    function fillRememberedLogin() {
-      const saved = getRememberedLogin();
-      if (!saved) return false;
-      $("loginCode").value = saved.code || "";
-      $("loginPassword").value = saved.password || "";
-      $("rememberLogin").checked = Boolean(saved.code && saved.password);
-      return Boolean(saved.code && saved.password);
-    }
-
     function showLogin() {
       $("loadingOverlay").style.display = "none";
       $("loginOverlay").style.display = "flex";
       $("app").style.display = "none";
-      const hasRememberedLogin = fillRememberedLogin();
-      setTimeout(() => $(hasRememberedLogin ? "loginBtn" : "loginCode").focus(), 60);
+      setTimeout(() => $("loginCode").focus(), 60);
     }
 
     function hideLoginAndShowApp() {
@@ -1377,26 +1310,12 @@
 
         currentUser = user;
         $("loginError").classList.remove("show");
-
-        if ($("rememberLogin").checked) {
-          saveRememberedLogin(code, password);
-        } else {
-          clearRememberedLogin();
-          $("loginPassword").value = "";
-        }
-
+        $("loginPassword").value = "";
         clearFilters();
         populateFiltersForCurrentUser();
         applyUserMode();
         refresh();
         hideLoginAndShowApp();
-      });
-
-
-      $("rememberLogin").addEventListener("change", () => {
-        if (!$("rememberLogin").checked) {
-          clearRememberedLogin();
-        }
       });
 
       $("logoutBtn").addEventListener("click", () => {
