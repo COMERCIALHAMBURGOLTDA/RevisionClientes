@@ -1308,7 +1308,7 @@
 
     function showApp() {
       document.body.classList.remove("loading-open", "login-open");
-      0 0"loadingOverlay").style.display = "none";
+      $("loadingOverlay").style.display = "none";
       $("loadingOverlay").setAttribute("aria-busy", "false");
       $("app").style.display = "block";
     }
@@ -1466,7 +1466,7 @@
     function showLogin() {
       document.body.classList.remove("loading-open");
       document.body.classList.add("login-open");
-      0 0"loadingOverlay").style.display = "none";
+      $("loadingOverlay").style.display = "none";
       $("loginOverlay").style.display = "flex";
       $("app").style.display = "none";
       const hasRememberedLogin = fillRememberedLogin();
@@ -1475,7 +1475,7 @@
 
     function hideLoginAndShowApp() {
       document.body.classList.remove("login-open");
-      0 0"loginOverlay").style.display = "none";
+      $("loginOverlay").style.display = "none";
       $("app").style.display = "block";
     }
 
@@ -1694,12 +1694,12 @@
       updateDetailTable(rows);
       $("modalTitle").textContent = `Detalle de cheques - ${selectedClientForDetail}`;
       $("modalSubtitle").textContent = `${rows.length.toLocaleString("es-CL")} cheques visibles para el cliente seleccionado.`;
-      0 0"detailModal").classList.add("show");
+      $("detailModal").classList.add("show");
       document.body.classList.add("modal-open");
     }
 
     function closeDetailModal() {
-      0 0"detailModal").classList.remove("show");
+      $("detailModal").classList.remove("show");
       document.body.classList.remove("modal-open");
     }
 
