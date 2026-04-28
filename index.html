@@ -899,6 +899,109 @@
       }
     }
 
+
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--app-height, 100vh);
+      background: linear-gradient(135deg, #172033 0%, #2563eb 100%);
+      padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    }
+    .auth-card {
+      width: min(430px, 100%);
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, .28);
+      padding: 24px;
+    }
+    .auth-card h2 {
+      margin: 0 0 6px;
+      font-size: clamp(24px, 6vw, 34px);
+      letter-spacing: -.04em;
+      color: var(--text);
+    }
+    .auth-card p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .auth-form { display: grid; gap: 14px; }
+    .remember-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .remember-row input {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      flex: 0 0 auto;
+      accent-color: var(--primary);
+      padding: 0;
+      border-radius: 4px;
+    }
+    .remember-hint {
+      margin-top: -8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .auth-error {
+      display: none;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .auth-error.show { display: block; }
+    .auth-actions { display: grid; gap: 10px; margin-top: 4px; }
+    .session-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .session-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.12);
+      color: white;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .logout-btn {
+      width: auto;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.14);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,.22); }
+    .hidden { display: none !important; }
+
   </style>
 </head>
 <body>
@@ -910,10 +1013,40 @@
     </div>
   </div>
 
+  <div id="loginOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Ingreso vendedores</h2>
+      <p>Ingresa tu código y contraseña. El usuario ADMIN puede ver todos los vendedores; cada vendedor verá solo sus datos.</p>
+      <form id="loginForm" class="auth-form">
+        <div class="field">
+          <label>Código</label>
+          <input id="loginCode" type="text" placeholder="Ej: V03 o ADMIN" autocomplete="username" autocapitalize="characters" />
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
+        </div>
+        <label class="remember-row">
+          <input id="rememberLogin" type="checkbox" />
+          <span>Recordar usuario y contraseña en este dispositivo</span>
+        </label>
+        <div class="remember-hint">Úsalo solo en un equipo o celular personal.</div>
+        <div id="loginError" class="auth-error">Código o contraseña incorrectos.</div>
+        <div class="auth-actions">
+          <button id="loginBtn" type="submit">Ingresar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="app">
   <header>
     <h1>REVISION ESTADO CLIENTES</h1>
     <p id="lastUpdateText">ULTIMA ACTUALIZACION DE DATOS: obteniendo información...</p>
+    <div class="session-bar">
+      <span id="sessionText" class="session-pill">Sesión no iniciada</span>
+      <button id="logoutBtn" class="logout-btn" type="button">Cerrar sesión</button>
+    </div>
   </header>
 
   <main>
@@ -929,8 +1062,8 @@
         <select id="clientFilter"><option value="">Todos</option></select>
       </div>
       <div class="field">
-        <label>Sucursal</label>
-        <select id="branchFilter"><option value="">Todas</option></select>
+        <label>Vendedor</label>
+        <select id="sellerFilter"><option value="">Todos</option></select>
       </div>
       <div class="field">
         <label>Comuna</label>
@@ -1022,8 +1155,12 @@
 
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=0&single=true&output=csv";
     const UPDATE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=902730115&single=true&output=csv";
+    const AUTH_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=366975486&single=true&output=csv";
 
     let allRows = [];
+    let users = [];
+    let currentUser = null;
+    const REMEMBER_LOGIN_KEY = "revisionEstadoClientesLogin";
     let selectedSearch = null;
     let selectedClientForDetail = "";
 
@@ -1133,13 +1270,161 @@
       return String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
     }
 
+
+    function normalizeCode(value) {
+      return cleanText(value).toUpperCase();
+    }
+
+    function getAccessibleRows() {
+      if (!currentUser) return [];
+      if (currentUser.role === "admin") return allRows;
+      return allRows.filter(r => normalizeCode(r.vendedor) === currentUser.code);
+    }
+
+    function setSessionText() {
+      if (!currentUser) {
+        $("sessionText").textContent = "Sesión no iniciada";
+        return;
+      }
+      const label = currentUser.role === "admin" ? "Supervisor" : "Vendedor";
+      $("sessionText").textContent = `${label}: ${currentUser.code}`;
+    }
+
+    function getRememberedLogin() {
+      try {
+        const saved = localStorage.getItem(REMEMBER_LOGIN_KEY);
+        return saved ? JSON.parse(saved) : null;
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    function saveRememberedLogin(code, password) {
+      try {
+        localStorage.setItem(REMEMBER_LOGIN_KEY, JSON.stringify({ code, password }));
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function clearRememberedLogin() {
+      try {
+        localStorage.removeItem(REMEMBER_LOGIN_KEY);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function fillRememberedLogin() {
+      const saved = getRememberedLogin();
+      if (!saved) return false;
+      $("loginCode").value = saved.code || "";
+      $("loginPassword").value = saved.password || "";
+      $("rememberLogin").checked = Boolean(saved.code && saved.password);
+      return Boolean(saved.code && saved.password);
+    }
+
+    function showLogin() {
+      $("loadingOverlay").style.display = "none";
+      $("loginOverlay").style.display = "flex";
+      $("app").style.display = "none";
+      const hasRememberedLogin = fillRememberedLogin();
+      setTimeout(() => $(hasRememberedLogin ? "loginBtn" : "loginCode").focus(), 60);
+    }
+
+    function hideLoginAndShowApp() {
+      $("loginOverlay").style.display = "none";
+      $("app").style.display = "block";
+    }
+
+    function applyUserMode() {
+      const isAdmin = currentUser?.role === "admin";
+      const sellerField = $("sellerFilter")?.closest(".field");
+      if (sellerField) sellerField.classList.toggle("hidden", !isAdmin);
+
+      if (!isAdmin && $("sellerFilter")) {
+        $("sellerFilter").value = "";
+      }
+
+      setSessionText();
+    }
+
+    function clearFilters() {
+      selectedSearch = null;
+      selectedClientForDetail = "";
+      $("searchInput").value = "";
+      hideSuggestions();
+      $("clientFilter").value = "";
+      $("sellerFilter").value = "";
+      $("communeFilter").value = "";
+      $("categoryFilter").value = "";
+    }
+
+    function setupLogin() {
+      $("loginForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const code = normalizeCode($("loginCode").value);
+        const password = cleanText($("loginPassword").value);
+        const user = users.find(u => u.code === code && u.password === password);
+
+        if (!user) {
+          $("loginError").classList.add("show");
+          $("loginPassword").value = "";
+          $("loginPassword").focus();
+          return;
+        }
+
+        currentUser = user;
+        $("loginError").classList.remove("show");
+
+        if ($("rememberLogin").checked) {
+          saveRememberedLogin(code, password);
+        } else {
+          clearRememberedLogin();
+          $("loginPassword").value = "";
+        }
+
+        clearFilters();
+        populateFiltersForCurrentUser();
+        applyUserMode();
+        refresh();
+        hideLoginAndShowApp();
+      });
+
+
+      $("rememberLogin").addEventListener("change", () => {
+        if (!$("rememberLogin").checked) {
+          clearRememberedLogin();
+        }
+      });
+
+      $("logoutBtn").addEventListener("click", () => {
+        currentUser = null;
+        clearFilters();
+        setSessionText();
+        $("loginCode").value = "";
+        $("loginPassword").value = "";
+        $("loginError").classList.remove("show");
+        showLogin();
+      });
+    }
+
+    function populateFiltersForCurrentUser() {
+      const rows = getAccessibleRows();
+      fillSelect("clientFilter", uniqueSorted(rows, "cliente"));
+      fillSelect("sellerFilter", uniqueSorted(rows, "vendedor"));
+      fillSelect("communeFilter", uniqueSorted(rows, "comuna"));
+      fillSelect("categoryFilter", uniqueSorted(rows, "categoria"));
+    }
+
     function getFilteredRows() {
       const client = $("clientFilter").value;
-      const branch = $("branchFilter").value;
+      const seller = $("sellerFilter").value;
       const commune = $("communeFilter").value;
       const category = $("categoryFilter").value;
 
-      return allRows.filter(r => {
+      return getAccessibleRows().filter(r => {
         let selectedMatch = true;
         if (selectedSearch) {
           if (selectedSearch.type === "cliente") selectedMatch = r.cliente === selectedSearch.value;
@@ -1149,7 +1434,7 @@
 
         return selectedMatch
           && (!client || r.cliente === client)
-          && (!branch || r.sucursal === branch)
+          && (!seller || r.vendedor === seller)
           && (!commune || r.comuna === commune)
           && (!category || r.categoria === category);
       });
@@ -1188,7 +1473,7 @@
       if ([...$("clientFilter").options].some(option => option.value === cliente)) {
         $("clientFilter").value = cliente;
       }
-      $("branchFilter").value = "";
+      $("sellerFilter").value = "";
       $("communeFilter").value = "";
       $("categoryFilter").value = "";
       hideSuggestions();
@@ -1282,7 +1567,7 @@
       const q = cleanText(query).toLowerCase();
       if (q.length < 2) return [];
 
-      const makeItems = (type, key, label) => uniqueSorted(allRows, key)
+      const makeItems = (type, key, label) => uniqueSorted(getAccessibleRows(), key)
         .filter(value => value.toLowerCase().includes(q))
         .slice(0, 8)
         .map(value => ({ type, value, label }));
@@ -1340,10 +1625,7 @@
     }
 
     function setupFilters() {
-      fillSelect("clientFilter", uniqueSorted(allRows, "cliente"));
-      fillSelect("branchFilter", uniqueSorted(allRows, "sucursal"));
-      fillSelect("communeFilter", uniqueSorted(allRows, "comuna"));
-      fillSelect("categoryFilter", uniqueSorted(allRows, "categoria"));
+      populateFiltersForCurrentUser();
 
       $("searchInput").addEventListener("input", () => {
         selectedSearch = null;
@@ -1395,7 +1677,7 @@
         refresh();
       });
 
-      ["branchFilter", "communeFilter", "categoryFilter"].forEach(id => {
+      ["sellerFilter", "communeFilter", "categoryFilter"].forEach(id => {
         $(id).addEventListener("input", () => {
           if (!$("clientFilter").value) selectedClientForDetail = "";
           refresh();
@@ -1407,14 +1689,7 @@
       });
 
       $("resetBtn").addEventListener("click", () => {
-        selectedSearch = null;
-        selectedClientForDetail = "";
-        $("searchInput").value = "";
-        hideSuggestions();
-        $("clientFilter").value = "";
-        $("branchFilter").value = "";
-        $("communeFilter").value = "";
-        $("categoryFilter").value = "";
+        clearFilters();
         refresh();
       });
 
@@ -1447,12 +1722,39 @@
       }
     }
 
+
+    async function loadUsers() {
+      const response = await fetch(AUTH_CSV_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Respuesta HTTP usuarios ${response.status}`);
+
+      const csvText = await response.text();
+      return new Promise((resolve, reject) => {
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            users = results.data.map(row => {
+              const code = normalizeCode(row.CODIGO);
+              return {
+                code,
+                password: cleanText(row["CONTRASEÑA"] || row.CONTRASENA || row.PASSWORD),
+                role: code === "ADMIN" ? "admin" : "seller"
+              };
+            }).filter(u => u.code && u.password);
+            resolve(users);
+          },
+          error: reject
+        });
+      });
+    }
+
     async function loadSheetData() {
       try {
         const response = await fetch(CSV_URL, { cache: "no-store" });
         if (!response.ok) throw new Error(`Respuesta HTTP ${response.status}`);
 
         await loadLastUpdateFromA1();
+        await loadUsers();
 
         const csvText = await response.text();
         Papa.parse(csvText, {
@@ -1461,8 +1763,8 @@
           complete: (results) => {
             allRows = results.data.map(normalizeRow).filter(r => r.cliente || r.sucursal || r.monto);
             setupFilters();
-            refresh();
-            showApp();
+            setupLogin();
+            showLogin();
           },
           error: (error) => {
             console.error(error);
