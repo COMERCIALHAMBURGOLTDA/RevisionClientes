@@ -942,6 +942,25 @@
       font-weight: 700;
     }
     .auth-error.show { display: block; }
+
+    .show-password-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      user-select: none;
+      margin-top: -6px;
+    }
+    .show-password-row input {
+      width: auto;
+      min-height: auto;
+      margin: 0;
+      accent-color: var(--primary);
+      flex: 0 0 auto;
+    }
+
     .remember-row {
       display: flex;
       align-items: flex-start;
@@ -1020,6 +1039,10 @@
           <label>Contraseña</label>
           <input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
         </div>
+        <label class="show-password-row">
+          <input id="showPassword" type="checkbox" />
+          <span>Mostrar contraseña</span>
+        </label>
         <label class="remember-row">
           <input id="rememberLogin" type="checkbox" />
           <span>Recordar usuario y contraseña en este dispositivo</span>
@@ -1345,6 +1368,10 @@
     function setupLogin() {
       loadSavedLogin();
 
+      $("showPassword").addEventListener("change", () => {
+        $("loginPassword").type = $("showPassword").checked ? "text" : "password";
+      });
+
       $("rememberLogin").addEventListener("change", () => {
         if (!$("rememberLogin").checked) {
           localStorage.removeItem(SAVED_LOGIN_KEY);
@@ -1380,6 +1407,8 @@
         clearFilters();
         setSessionText();
         $("loginError").classList.remove("show");
+        $("showPassword").checked = false;
+        $("loginPassword").type = "password";
         loadSavedLogin();
         if (!$("rememberLogin").checked) {
           $("loginCode").value = "";
