@@ -942,6 +942,25 @@
       font-weight: 700;
     }
     .auth-error.show { display: block; }
+    .remember-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      user-select: none;
+    }
+    .remember-row input {
+      width: auto;
+      min-height: auto;
+      margin-top: 2px;
+      accent-color: var(--primary);
+      flex: 0 0 auto;
+    }
+    .remember-row span {
+      display: block;
+    }
     .auth-actions { display: grid; gap: 10px; margin-top: 4px; }
     .session-bar {
       display: flex;
@@ -1001,6 +1020,10 @@
           <label>Contraseña</label>
           <input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
         </div>
+        <label class="remember-row">
+          <input id="rememberLogin" type="checkbox" />
+          <span>Recordar usuario y contraseña en este dispositivo</span>
+        </label>
         <div id="loginError" class="auth-error">Código o contraseña incorrectos.</div>
         <div class="auth-actions">
           <button id="loginBtn" type="submit">Ingresar</button>
@@ -1126,6 +1149,7 @@
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=0&single=true&output=csv";
     const UPDATE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=902730115&single=true&output=csv";
     const AUTH_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=366975486&single=true&output=csv";
+    const SAVED_LOGIN_KEY = "revisionClientesSavedLogin";
 
     let allRows = [];
     let users = [];
@@ -1244,6 +1268,27 @@
       return cleanText(value).toUpperCase();
     }
 
+    function loadSavedLogin() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SAVED_LOGIN_KEY) || "null");
+        if (!saved) return;
+        $("loginCode").value = saved.code || "";
+        $("loginPassword").value = saved.password || "";
+        $("rememberLogin").checked = Boolean(saved.code && saved.password);
+      } catch (error) {
+        console.warn("No se pudo leer el login guardado", error);
+        localStorage.removeItem(SAVED_LOGIN_KEY);
+      }
+    }
+
+    function saveLoginPreference(code, password) {
+      if ($("rememberLogin").checked) {
+        localStorage.setItem(SAVED_LOGIN_KEY, JSON.stringify({ code, password }));
+      } else {
+        localStorage.removeItem(SAVED_LOGIN_KEY);
+      }
+    }
+
     function getAccessibleRows() {
       if (!currentUser) return [];
       if (currentUser.role === "admin") return allRows;
@@ -1263,7 +1308,10 @@
       $("loadingOverlay").style.display = "none";
       $("loginOverlay").style.display = "flex";
       $("app").style.display = "none";
-      setTimeout(() => $("loginCode").focus(), 60);
+      setTimeout(() => {
+        const target = $("loginCode").value ? $("loginPassword") : $("loginCode");
+        target.focus();
+      }, 60);
     }
 
     function hideLoginAndShowApp() {
@@ -1295,6 +1343,14 @@
     }
 
     function setupLogin() {
+      loadSavedLogin();
+
+      $("rememberLogin").addEventListener("change", () => {
+        if (!$("rememberLogin").checked) {
+          localStorage.removeItem(SAVED_LOGIN_KEY);
+        }
+      });
+
       $("loginForm").addEventListener("submit", (event) => {
         event.preventDefault();
         const code = normalizeCode($("loginCode").value);
@@ -1309,8 +1365,9 @@
         }
 
         currentUser = user;
+        saveLoginPreference(code, password);
         $("loginError").classList.remove("show");
-        $("loginPassword").value = "";
+        if (!$("rememberLogin").checked) $("loginPassword").value = "";
         clearFilters();
         populateFiltersForCurrentUser();
         applyUserMode();
@@ -1322,9 +1379,12 @@
         currentUser = null;
         clearFilters();
         setSessionText();
-        $("loginCode").value = "";
-        $("loginPassword").value = "";
         $("loginError").classList.remove("show");
+        loadSavedLogin();
+        if (!$("rememberLogin").checked) {
+          $("loginCode").value = "";
+          $("loginPassword").value = "";
+        }
         showLogin();
       });
     }
