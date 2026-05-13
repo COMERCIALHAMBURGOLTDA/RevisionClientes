@@ -1,0 +1,1395 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>Fotografías de cédulas</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --danger: #dc2626;
+      --ok: #16a34a;
+      --warning: #d97706;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    body { min-width: 320px; }
+
+    header {
+      padding: 28px 28px 18px;
+      background: linear-gradient(135deg, #172033 0%, #2563eb 100%);
+      color: white;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 4vw, 40px);
+      letter-spacing: -.04em;
+    }
+    header p {
+      margin: 0;
+      color: rgba(255,255,255,.82);
+      max-width: 900px;
+      line-height: 1.45;
+    }
+    main {
+      width: min(100%, 1480px);
+      margin-inline: auto;
+      padding: 24px 28px 40px;
+    }
+
+    #app { display: none; }
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      padding: 24px;
+    }
+    .loading-box {
+      width: min(520px, 100%);
+      background: white;
+      border: 1px solid rgba(229, 231, 235, .85);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      text-align: center;
+    }
+    .loader {
+      width: 42px;
+      height: 42px;
+      border: 4px solid #dbeafe;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .session-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .session-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.12);
+      color: white;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    button, a.button {
+      border: 0;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+      padding: 10px 13px;
+      min-height: 42px;
+      font-size: 13px;
+      font-weight: 900;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    .top-button, .logout-btn {
+      border-radius: 999px;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.35);
+    }
+    .logout-btn { background: rgba(255,255,255,.12); }
+    .button-dark { background: #172033; }
+    button:disabled { background: #98a2b3; cursor: not-allowed; opacity: .7; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(229, 231, 235, .75);
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.4fr repeat(4, minmax(140px, 1fr)) auto;
+      gap: 14px;
+      padding: 16px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      padding: 11px 12px;
+      min-height: 44px;
+      font-size: 16px;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    #resetBtn { margin-top: 21px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 16px;
+      margin: 18px 0;
+    }
+    .kpi { padding: 18px; }
+    .kpi span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .kpi strong {
+      font-size: clamp(24px, 3vw, 34px);
+      letter-spacing: -.04em;
+    }
+
+    .table-card { padding: 18px; overflow: hidden; }
+    .table-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .table-card h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.02em; }
+    .table-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .table-wrap { overflow: auto; max-height: 650px; border: 1px solid var(--line); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; background: white; min-width: 1080px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; vertical-align: middle; }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 1;
+      color: #344054;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      text-align: center;
+      font-weight: 900;
+    }
+    tr:hover td { background: #f8fbff; }
+    .center { text-align: center; }
+    .muted { color: var(--muted); }
+    .row-actions { display: flex; justify-content: center; gap: 8px; }
+    .small-btn { min-height: 34px; padding: 8px 10px; border-radius: 10px; font-size: 12px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .badge.ok { background: #f0fdf4; color: var(--ok); }
+    .badge.danger { background: #fef2f2; color: var(--danger); }
+    .badge.warning { background: #fffbeb; color: var(--warning); }
+    .status { margin-top: 10px; color: var(--muted); font-size: 13px; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, .58);
+      padding: 20px;
+    }
+    .modal-backdrop.show { display: flex; }
+    body.modal-open { overflow: hidden; }
+    .modal-card {
+      width: min(1380px, calc(100vw - 32px));
+      max-height: 92vh;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, .25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #f9fafb;
+    }
+    .modal-header h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.02em; }
+    .modal-header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .modal-close {
+      width: auto;
+      min-width: 44px;
+      border-radius: 10px;
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--line);
+      font-size: 20px;
+      line-height: 1;
+    }
+    .modal-body { padding: 18px; overflow: auto; }
+    .detail-layout { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(320px, 1.2fr); gap: 16px; }
+    .detail-box { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: #fff; }
+    .detail-box h3 { margin: 0 0 12px; font-size: 16px; }
+    .detail-list { display: grid; gap: 8px; }
+    .detail-line { display: grid; grid-template-columns: 116px 1fr; gap: 10px; font-size: 14px; }
+    .detail-line span { color: var(--muted); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .photos-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .photo-card { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #f8fafc; }
+    .photo-frame { min-height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; }
+    .photo-frame img { width: 100%; height: 100%; max-height: 430px; object-fit: contain; display: block; }
+    .photo-frame iframe { width: 100%; height: 430px; border: 0; display: block; background: #f8fafc; }
+    .photo-empty { padding: 24px; text-align: center; color: var(--muted); font-weight: 800; }
+    .photo-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px; background: white; border-top: 1px solid var(--line); }
+    .photo-footer strong { font-size: 13px; }
+    .photo-footer a { color: var(--primary); font-weight: 900; font-size: 12px; text-decoration: none; }
+
+
+
+    /* Modal detalle mejorado */
+    .modal-backdrop {
+      background: rgba(15, 23, 42, .68);
+      backdrop-filter: blur(4px);
+    }
+    .modal-card {
+      width: min(1240px, calc(100vw - 32px));
+      max-height: min(92vh, 920px);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 30px 100px rgba(2, 6, 23, .34);
+    }
+    .modal-header {
+      padding: 20px 22px;
+      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+      color: white;
+      border-bottom: 0;
+    }
+    .modal-header h2 {
+      color: white;
+      font-size: clamp(20px, 2.4vw, 28px);
+    }
+    .modal-header p { color: rgba(255,255,255,.82); }
+    .modal-close {
+      min-width: 42px;
+      min-height: 42px;
+      background: rgba(255,255,255,.14);
+      color: white;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px;
+      font-size: 22px;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .modal-close:hover { background: rgba(255,255,255,.24); transform: scale(1.03); }
+    .modal-body {
+      padding: 18px;
+      background: #f8fafc;
+    }
+    .detail-layout {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .detail-box {
+      border: 1px solid rgba(226, 232, 240, .95);
+      border-radius: 18px;
+      padding: 16px;
+      background: white;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, .06);
+    }
+    .detail-box h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      color: #0f172a;
+      font-size: 17px;
+      letter-spacing: -.02em;
+    }
+    .detail-box h3::before {
+      content: "";
+      width: 9px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--primary);
+      display: inline-block;
+    }
+    .detail-list {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .detail-line {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 5px;
+      min-height: 76px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .detail-line span {
+      font-size: 11px;
+      color: #64748b;
+    }
+    .detail-line strong {
+      color: #0f172a;
+      font-size: 15px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .detail-table-wrap {
+      max-height: 330px;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    .detail-branches-table {
+      min-width: 820px;
+    }
+    .detail-branches-table th {
+      background: #eef4ff;
+      color: #172033;
+      z-index: 2;
+    }
+    .detail-branches-table td {
+      font-size: 13px;
+    }
+    .detail-branches-table tbody tr:nth-child(even) td {
+      background: #fbfdff;
+    }
+    .detail-photos-box {
+      grid-column: 1 / -1;
+    }
+    .photos-grid {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .photo-empty {
+      grid-column: 1 / -1;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed #cbd5e1;
+      border-radius: 16px;
+      background: #f8fafc;
+      color: #475569;
+    }
+    .photo-card {
+      border-radius: 18px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+    }
+    .photo-footer a {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border-radius: 999px;
+      padding: 8px 10px;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 980px) {
+      .toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .field.search-field { grid-column: 1 / -1; }
+      #resetBtn { margin-top: 0; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      header { padding: 22px 16px 16px; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; }
+      main { padding: 16px 12px 28px; }
+      .actions { width: 100%; }
+      .actions button, .actions a.button { flex: 1; min-height: 44px; }
+      .toolbar { grid-template-columns: 1fr !important; padding: 14px; }
+      .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .kpi { padding: 14px; }
+      .table-card { padding: 12px; }
+      .table-wrap { max-height: none; overflow: visible; border: 0; }
+      table, thead, tbody, tr, th, td { display: block; width: 100%; }
+      table { min-width: 0; background: transparent; }
+      thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+      tbody { display: grid; gap: 12px; }
+      tr { background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 20px rgba(15,23,42,.06); overflow: hidden; }
+      tr:hover td { background: transparent; }
+      td { display: grid; grid-template-columns: minmax(112px, 38%) 1fr; gap: 10px; align-items: center; min-height: 42px; padding: 10px 12px; font-size: 13px; text-align: right; }
+      td::before { content: attr(data-label); color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; text-align: left; }
+      td:last-child { border-bottom: 0; }
+      .center { text-align: right; }
+      .row-actions { justify-content: flex-end; }
+      .modal-backdrop { align-items: flex-end; padding: 0; }
+      .modal-card { width: 100%; max-height: 94dvh; border-radius: 18px 18px 0 0; }
+      .modal-header { padding: 14px 16px; }
+      .modal-body { padding: 12px; }
+      .photos-grid { grid-template-columns: 1fr; }
+      .photo-frame { min-height: 220px; }
+    }
+    @media (max-width: 420px) {
+      .grid { grid-template-columns: 1fr; }
+      td { grid-template-columns: 1fr; text-align: left; }
+      .center, .row-actions { text-align: left; justify-content: flex-start; }
+    }
+
+
+    /* Optimización responsive avanzada para celular y tablet */
+    html {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+    }
+
+    body {
+      width: 100%;
+      min-width: 320px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
+      touch-action: pan-y;
+    }
+
+    #app {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: visible;
+    }
+
+    header {
+      padding-top: max(28px, env(safe-area-inset-top));
+      padding-left: max(28px, env(safe-area-inset-left));
+      padding-right: max(28px, env(safe-area-inset-right));
+    }
+
+    main {
+      padding-left: max(28px, env(safe-area-inset-left));
+      padding-right: max(28px, env(safe-area-inset-right));
+      padding-bottom: max(40px, env(safe-area-inset-bottom));
+    }
+
+    img, iframe, video, canvas, svg { max-width: 100%; }
+    input, select, button, a.button { -webkit-tap-highlight-color: rgba(37, 99, 235, .16); }
+    .table-wrap, .modal-body { -webkit-overflow-scrolling: touch; }
+
+    @supports (height: 100svh) {
+      body, #app { min-height: 100svh; }
+    }
+
+    @media (max-width: 980px) {
+      main { width: 100%; }
+      .toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .field.search-field { grid-column: 1 / -1; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      header {
+        padding-top: max(22px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+        padding-bottom: 16px;
+        border-bottom-left-radius: 18px;
+        border-bottom-right-radius: 18px;
+      }
+
+      header h1 {
+        font-size: clamp(24px, 8vw, 31px);
+        line-height: 1.08;
+      }
+
+      header p {
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .session-bar {
+        align-items: stretch;
+      }
+
+      .session-pill {
+        width: 100%;
+        justify-content: center;
+        min-height: 38px;
+      }
+
+      .actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .actions button,
+      .actions a.button {
+        width: 100%;
+        min-height: 46px;
+        padding-inline: 10px;
+      }
+
+      main {
+        padding-top: 14px;
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+        padding-bottom: max(28px, env(safe-area-inset-bottom));
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+        padding: 14px;
+        border-radius: 16px;
+      }
+
+      #resetBtn { margin-top: 0; }
+
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px;
+      }
+
+      .kpi {
+        padding: 14px;
+        border-radius: 16px;
+      }
+
+      .kpi span {
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+
+      .kpi strong {
+        font-size: clamp(22px, 8vw, 28px);
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+      }
+
+      .table-card {
+        padding: 12px;
+        border-radius: 16px;
+        overflow: visible;
+      }
+
+      .table-card h2 { font-size: 17px; }
+      .table-card p { font-size: 12px; line-height: 1.4; }
+
+      .table-wrap {
+        max-height: none !important;
+        overflow: visible !important;
+        border: 0;
+        border-radius: 0;
+      }
+
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display: block;
+        width: 100%;
+      }
+
+      table {
+        min-width: 0 !important;
+        background: transparent;
+      }
+
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      tbody {
+        display: grid;
+        gap: 12px;
+      }
+
+      tr {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+        overflow: hidden;
+      }
+
+      tr:hover td { background: transparent; }
+
+      td {
+        display: grid;
+        grid-template-columns: minmax(106px, 38%) 1fr;
+        gap: 10px;
+        align-items: center;
+        min-height: 42px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        text-align: right;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        text-align: left;
+      }
+
+      td:last-child { border-bottom: 0; }
+      .center { text-align: right; }
+      .row-actions { justify-content: flex-end; }
+      .row-actions .small-btn { width: min(180px, 100%); }
+
+      .modal-backdrop {
+        align-items: flex-end;
+        padding: 0;
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .modal-card {
+        width: 100%;
+        max-height: 94vh;
+        max-height: 94dvh;
+        border-radius: 20px 20px 0 0;
+      }
+
+      .modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        padding: 14px 16px;
+      }
+
+      .modal-header h2 {
+        font-size: clamp(20px, 7vw, 26px);
+        line-height: 1.05;
+      }
+
+      .modal-header p {
+        font-size: 12px;
+      }
+
+      .modal-close {
+        min-width: 48px;
+        min-height: 48px;
+        flex: 0 0 auto;
+      }
+
+      .modal-body {
+        padding: 12px;
+        max-height: calc(94dvh - 82px);
+        overflow-y: auto !important;
+        touch-action: pan-y;
+      }
+
+      .detail-layout {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+      }
+
+      .detail-box {
+        padding: 12px;
+        border-radius: 16px;
+      }
+
+      .detail-box h3 {
+        font-size: 15px;
+        margin-bottom: 10px;
+      }
+
+      .detail-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .detail-line {
+        min-height: 66px;
+        padding: 10px;
+      }
+
+      .detail-line strong {
+        font-size: 13px;
+      }
+
+      .detail-table-wrap {
+        max-height: none !important;
+        overflow: visible !important;
+        border: 0;
+      }
+
+      .detail-branches-table { min-width: 0 !important; }
+
+      .photos-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+      }
+
+      .photo-card {
+        border-radius: 16px;
+      }
+
+      .photo-frame {
+        min-height: 0;
+        height: clamp(260px, 62vh, 520px);
+        background: #eef2f7;
+      }
+
+      .photo-frame iframe {
+        height: 100%;
+        min-height: 260px;
+      }
+
+      .photo-frame img {
+        height: 100%;
+        max-height: none;
+      }
+
+      .photo-footer {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .photo-footer strong {
+        font-size: 12px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .photo-footer a {
+        width: 100%;
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 430px) {
+      main {
+        padding-left: max(10px, env(safe-area-inset-left));
+        padding-right: max(10px, env(safe-area-inset-right));
+      }
+
+      .actions { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr !important; }
+
+      td {
+        grid-template-columns: 1fr;
+        text-align: left;
+        gap: 4px;
+      }
+
+      .center,
+      .row-actions {
+        text-align: left;
+        justify-content: flex-start;
+      }
+
+      .row-actions .small-btn { width: 100%; }
+      .detail-list { grid-template-columns: 1fr; }
+      .photo-frame { height: clamp(240px, 58vh, 460px); }
+    }
+
+    @media (orientation: landscape) and (max-height: 540px) {
+      header {
+        padding-top: 12px;
+        padding-bottom: 12px;
+      }
+
+      header h1 { font-size: 22px; }
+      main { padding-top: 10px; }
+      .modal-card { max-height: 96dvh; }
+      .modal-body { max-height: calc(96dvh - 70px); }
+      .photo-frame { height: 320px; }
+    }
+
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay" aria-live="polite" aria-busy="true">
+    <div class="loading-box">
+      <div class="loader" aria-hidden="true"></div>
+      <strong>Obteniendo fotografías de cédulas...</strong>
+      <p>Estamos cargando los datos publicados desde Google Sheets.</p>
+    </div>
+  </div>
+
+  <div id="app">
+    <header>
+      <h1>Fotografías de cédulas</h1>
+      <p>Resumen por cliente y sucursal. Presiona <strong>Ver detalle</strong> para revisar las fotografías asociadas.</p>
+      <div class="session-bar">
+        <span id="sessionText" class="session-pill">Sesión iniciada</span>
+        <div class="actions">
+          <a class="button top-button" href="index.html">Volver al inicio</a>
+          <button id="logoutBtn" class="logout-btn" type="button">Cerrar sesión</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="toolbar card">
+        <div class="field search-field">
+          <label>Buscar cliente / sucursal / dirección / comuna</label>
+          <input id="searchInput" type="search" placeholder="Escribe para filtrar resultados..." autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Cliente</label>
+          <select id="clientFilter"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
+          <label>Vendedor</label>
+          <select id="sellerFilter"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
+          <label>Comuna</label>
+          <select id="communeFilter"><option value="">Todas</option></select>
+        </div>
+        <div class="field">
+          <label>Fotografía</label>
+          <select id="photoFilter">
+            <option value="">Todas</option>
+            <option value="con">Con fotografía</option>
+            <option value="sin">Sin fotografía</option>
+          </select>
+        </div>
+        <button id="resetBtn" type="button">Limpiar filtros</button>
+      </section>
+
+      <section class="grid">
+        <article class="card kpi"><span>Clientes</span><strong id="kpiClientes">0</strong></article>
+        <article class="card kpi"><span>Sucursales</span><strong id="kpiSucursales">0</strong></article>
+        <article class="card kpi"><span>Con fotografía</span><strong id="kpiConFotos">0</strong></article>
+        <article class="card kpi"><span>Sin fotografía</span><strong id="kpiSinFotos">0</strong></article>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-header">
+          <div>
+            <h2>Resumen por cliente y sucursal</h2>
+            <p>La columna B del CSV se usa como cliente. La columna A se muestra como sucursal dentro del detalle de cada cliente.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Sucursal</th>
+                <th>Dirección</th>
+                <th>Comuna</th>
+                <th>Vendedor</th>
+                <th>Categoría</th>
+                <th>Condición</th>
+                <th>Fotografías</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="summaryBody"></tbody>
+          </table>
+        </div>
+        <div id="status" class="status"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="detailModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalTitle">Detalle de fotografías</h2>
+          <p id="modalSubtitle">Cliente seleccionado · sucursales, estado de fotografías y accesos a Drive.</p>
+        </div>
+        <button id="closeModalBtn" class="modal-close" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-layout">
+          <section class="detail-box">
+            <h3>Información del cliente</h3>
+            <div id="detailInfo" class="detail-list"></div>
+          </section>
+          <section class="detail-box">
+            <h3>Sucursales del cliente</h3>
+            <div class="table-wrap detail-table-wrap">
+              <table class="detail-branches-table">
+                <thead>
+                  <tr>
+                    <th>Sucursal</th>
+                    <th>Dirección</th>
+                    <th>Comuna</th>
+                    <th>Vendedor</th>
+                    <th>Categoría</th>
+                    <th>Condición</th>
+                    <th>Fotos</th>
+                  </tr>
+                </thead>
+                <tbody id="detailBranches"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="detail-box detail-photos-box">
+            <h3>Fotografías del cheque</h3>
+            <div id="detailPhotos" class="photos-grid"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PHOTO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=945534356&single=true&output=csv";
+    const SESSION_KEY = "revisionClientesSession";
+
+
+
+    function setViewportHeightVar() {
+      document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+    }
+    setViewportHeightVar();
+    window.addEventListener("resize", setViewportHeightVar);
+    window.addEventListener("orientationchange", setViewportHeightVar);
+
+    let allRows = [];
+    let currentUser = null;
+    let currentSummary = [];
+
+    const $ = (id) => document.getElementById(id);
+
+    function cleanText(value) { return String(value ?? "").trim(); }
+    function normalizeCode(value) { return cleanText(value).toUpperCase(); }
+    function normalizeSearch(value) {
+      return cleanText(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+    }
+    function uniqueSorted(rows, key) {
+      return [...new Set(rows.map(r => r[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+    }
+    function fillSelect(id, values) {
+      const select = $(id);
+      const selected = select.value;
+      const first = select.querySelector("option")?.outerHTML || '<option value="">Todos</option>';
+      select.innerHTML = first + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      if (values.includes(selected)) select.value = selected;
+    }
+
+    function hasValidUrl(value) {
+      const txt = cleanText(value);
+      return /^https?:\/\//i.test(txt) && txt.toUpperCase() !== "NO";
+    }
+    function getDriveFileId(url) {
+      const txt = cleanText(url);
+      if (!txt) return "";
+      const patterns = [
+        /\/file\/d\/([^/]+)/,
+        /[?&]id=([^&]+)/,
+        /open\?id=([^&]+)/
+      ];
+      for (const pattern of patterns) {
+        const match = txt.match(pattern);
+        if (match?.[1]) return decodeURIComponent(match[1]);
+      }
+      return "";
+    }
+
+    function drivePreviewUrl(url) {
+      const txt = cleanText(url);
+      if (!hasValidUrl(txt)) return "";
+      const fileId = getDriveFileId(txt);
+      return fileId ? `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview` : txt;
+    }
+
+    function directImageUrl(url) {
+      const txt = cleanText(url);
+      if (!hasValidUrl(txt)) return "";
+      const fileId = getDriveFileId(txt);
+      return fileId ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1600` : txt;
+    }
+
+    function getPhotos(row) {
+      return [
+        { label: "Fotografía 1", url: row.urlFoto1, preview: drivePreviewUrl(row.urlFoto1), direct: directImageUrl(row.urlFoto1), isDrive: Boolean(getDriveFileId(row.urlFoto1)) },
+        { label: "Fotografía 2", url: row.urlFoto2, preview: drivePreviewUrl(row.urlFoto2), direct: directImageUrl(row.urlFoto2), isDrive: Boolean(getDriveFileId(row.urlFoto2)) }
+      ].filter(photo => hasValidUrl(photo.url));
+    }
+
+    function getSessionUser() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+        if (!saved || !saved.code || !saved.role) return null;
+        return { code: normalizeCode(saved.code), role: saved.role === "admin" ? "admin" : "seller" };
+      } catch (error) {
+        sessionStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+    }
+    function getAccessibleRows() {
+      if (!currentUser) return [];
+      if (currentUser.role === "admin") return allRows;
+      return allRows.filter(r => normalizeCode(r.vendedor) === currentUser.code);
+    }
+    function setSessionText() {
+      const label = currentUser?.role === "admin" ? "Supervisor" : "Vendedor";
+      $("sessionText").textContent = currentUser ? `${label}: ${currentUser.code}` : "Sesión no iniciada";
+    }
+    function applyUserMode() {
+      const isAdmin = currentUser?.role === "admin";
+      const sellerField = $("sellerFilter")?.closest(".field");
+      if (sellerField) sellerField.classList.toggle("hidden", !isAdmin);
+      if (!isAdmin && $("sellerFilter")) $("sellerFilter").value = "";
+      setSessionText();
+    }
+
+    function normalizeRow(row, index) {
+      const cliente = cleanText(row.NOMBRE || row.CLIENTE);        // Columna B
+      const sucursal = cleanText(row.CRUCE || row.SUCURSAL);       // Columna A
+      const urlFoto1 = cleanText(row["URL FOTOGRAFIA"] || row["URL FOTOGRAFÍA"] || row.URL_FOTOGRAFIA);
+      const urlFoto2 = cleanText(row["URL FOTOGRAFIA 2"] || row["URL FOTOGRAFÍA 2"] || row.URL_FOTOGRAFIA_2);
+      return {
+        id: index,
+        sucursal,
+        cliente,
+        vendedor: cleanText(row.VENDEDOR),
+        direccion: cleanText(row.DIRECCION || row["DIRECCIÓN"]),
+        comuna: cleanText(row.COMUNA),
+        categoria: cleanText(row.CATEGORIA || row["CATEGORÍA"]),
+        condicion: cleanText(row.CONDICION || row["CONDICIÓN"]),
+        urlFoto1,
+        urlFoto2
+      };
+    }
+
+    function populateFilters() {
+      const rows = getAccessibleRows();
+      fillSelect("clientFilter", uniqueSorted(rows, "cliente"));
+      fillSelect("sellerFilter", uniqueSorted(rows, "vendedor"));
+      fillSelect("communeFilter", uniqueSorted(rows, "comuna"));
+    }
+
+    function getFilteredRows() {
+      const q = normalizeSearch($("searchInput").value);
+      const client = $("clientFilter").value;
+      const seller = $("sellerFilter").value;
+      const commune = $("communeFilter").value;
+      const photoStatus = $("photoFilter").value;
+
+      return getAccessibleRows().filter(row => {
+        const photos = getPhotos(row);
+        const searchable = normalizeSearch([row.cliente, row.sucursal, row.direccion, row.comuna, row.vendedor, row.categoria, row.condicion].join(" "));
+        return (!q || searchable.includes(q))
+          && (!client || row.cliente === client)
+          && (!seller || row.vendedor === seller)
+          && (!commune || row.comuna === commune)
+          && (!photoStatus || (photoStatus === "con" ? photos.length > 0 : photos.length === 0));
+      });
+    }
+
+    function summarizeBranches(items) {
+      const map = new Map();
+      items.forEach(row => {
+        const key = row.sucursal || `Sucursal ${row.id + 1}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(row);
+      });
+
+      return [...map.values()].map(branchRows => {
+        const first = branchRows[0];
+        const photoCount = branchRows.reduce((sum, row) => sum + getPhotos(row).length, 0);
+        return {
+          sucursal: first.sucursal,
+          direccion: [...new Set(branchRows.map(i => i.direccion).filter(Boolean))].join(", "),
+          comuna: [...new Set(branchRows.map(i => i.comuna).filter(Boolean))].join(", "),
+          vendedor: [...new Set(branchRows.map(i => i.vendedor).filter(Boolean))].join(", "),
+          categoria: [...new Set(branchRows.map(i => i.categoria).filter(Boolean))].join(", "),
+          condicion: [...new Set(branchRows.map(i => i.condicion).filter(Boolean))].join(", "),
+          photoCount,
+          rows: branchRows
+        };
+      }).sort((a, b) => (a.sucursal || "").localeCompare(b.sucursal || "", "es"));
+    }
+
+    function buildSummary(rows) {
+      const map = new Map();
+      rows.forEach(row => {
+        const key = row.cliente || "Cliente sin nombre";
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(row);
+      });
+
+      return [...map.values()].map(items => {
+        const first = items[0];
+        const branches = summarizeBranches(items);
+        const photoCount = items.reduce((sum, item) => sum + getPhotos(item).length, 0);
+        return {
+          key: first.cliente,
+          cliente: first.cliente,
+          sucursal: branches.length === 1 ? (branches[0].sucursal || "—") : `${branches.length} sucursales`,
+          direccion: branches.length === 1 ? (branches[0].direccion || "—") : "Ver detalle",
+          comuna: [...new Set(items.map(i => i.comuna).filter(Boolean))].join(", "),
+          vendedor: [...new Set(items.map(i => i.vendedor).filter(Boolean))].join(", "),
+          categoria: [...new Set(items.map(i => i.categoria).filter(Boolean))].join(", "),
+          condicion: [...new Set(items.map(i => i.condicion).filter(Boolean))].join(", "),
+          branchCount: branches.length,
+          photoCount,
+          rows: items,
+          branches
+        };
+      }).sort((a, b) => a.cliente.localeCompare(b.cliente, "es"));
+    }
+
+    function updateKpis(rows, summary) {
+      $("kpiClientes").textContent = new Set(rows.map(r => r.cliente)).size.toLocaleString("es-CL");
+      $("kpiSucursales").textContent = summary.reduce((sum, item) => sum + item.branchCount, 0).toLocaleString("es-CL");
+      $("kpiConFotos").textContent = rows.filter(r => getPhotos(r).length > 0).length.toLocaleString("es-CL");
+      $("kpiSinFotos").textContent = rows.filter(r => getPhotos(r).length === 0).length.toLocaleString("es-CL");
+    }
+
+    function renderSummary(summary) {
+      $("summaryBody").innerHTML = summary.map((item, index) => {
+        const photoBadge = item.photoCount > 0
+          ? `<span class="badge ok">${item.photoCount} foto${item.photoCount === 1 ? "" : "s"}</span>`
+          : `<span class="badge danger">Sin foto</span>`;
+        return `
+          <tr>
+            <td data-label="Cliente"><strong>${escapeHtml(item.cliente || "—")}</strong></td>
+            <td data-label="Sucursal">${escapeHtml(item.sucursal || "—")}</td>
+            <td data-label="Dirección">${escapeHtml(item.direccion || "—")}</td>
+            <td data-label="Comuna">${escapeHtml(item.comuna || "—")}</td>
+            <td data-label="Vendedor" class="center">${escapeHtml(item.vendedor || "—")}</td>
+            <td data-label="Categoría" class="center">${escapeHtml(item.categoria || "—")}</td>
+            <td data-label="Condición" class="center">${escapeHtml(item.condicion || "—")}</td>
+            <td data-label="Fotografías" class="center">${photoBadge}</td>
+            <td data-label="Acción">
+              <div class="row-actions">
+                <button class="small-btn button-dark" type="button" data-detail-index="${index}">Ver detalle</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join("");
+
+      document.querySelectorAll("[data-detail-index]").forEach(btn => {
+        btn.addEventListener("click", () => openDetail(Number(btn.dataset.detailIndex)));
+      });
+
+      $("status").textContent = summary.length
+        ? `Mostrando ${summary.length.toLocaleString("es-CL")} cliente${summary.length === 1 ? "" : "s"}. Abre Ver detalle para revisar todas sus sucursales.`
+        : "No hay resultados para los filtros aplicados.";
+    }
+
+    function refresh() {
+      const rows = getFilteredRows();
+      currentSummary = buildSummary(rows);
+      updateKpis(rows, currentSummary);
+      renderSummary(currentSummary);
+    }
+
+    function renderDetailInfo(item) {
+      const sinFotos = item.rows.filter(row => getPhotos(row).length === 0).length;
+      const conFotos = item.rows.filter(row => getPhotos(row).length > 0).length;
+      const info = [
+        ["Cliente", item.cliente || "—"],
+        ["Sucursales", item.branchCount.toLocaleString("es-CL")],
+        ["Con foto", conFotos.toLocaleString("es-CL")],
+        ["Sin foto", sinFotos.toLocaleString("es-CL")],
+        ["Comunas", item.comuna || "—"],
+        ["Vendedores", item.vendedor || "—"],
+        ["Categorías", item.categoria || "—"],
+        ["Condiciones", item.condicion || "—"]
+      ];
+      $("detailInfo").innerHTML = info.map(([label, value]) => `
+        <div class="detail-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>
+      `).join("");
+    }
+
+    function renderDetailBranches(item) {
+      $("detailBranches").innerHTML = item.branches.map(branch => {
+        const photoBadge = branch.photoCount > 0
+          ? `<span class="badge ok">${branch.photoCount} foto${branch.photoCount === 1 ? "" : "s"}</span>`
+          : `<span class="badge danger">Sin foto</span>`;
+        return `
+          <tr>
+            <td data-label="Sucursal"><strong>${escapeHtml(branch.sucursal || "—")}</strong></td>
+            <td data-label="Dirección">${escapeHtml(branch.direccion || "—")}</td>
+            <td data-label="Comuna" class="center">${escapeHtml(branch.comuna || "—")}</td>
+            <td data-label="Vendedor" class="center">${escapeHtml(branch.vendedor || "—")}</td>
+            <td data-label="Categoría" class="center">${escapeHtml(branch.categoria || "—")}</td>
+            <td data-label="Condición" class="center">${escapeHtml(branch.condicion || "—")}</td>
+            <td data-label="Fotos" class="center">${photoBadge}</td>
+          </tr>`;
+      }).join("");
+    }
+
+    function renderPhotos(item) {
+      const photos = item.rows.flatMap(row => getPhotos(row).map(photo => ({ ...photo, sucursal: row.sucursal, direccion: row.direccion })));
+      if (!photos.length) {
+        $("detailPhotos").innerHTML = `<div class="photo-empty">Este cliente no tiene fotografías registradas en ninguna de sus sucursales.</div>`;
+        return;
+      }
+      $("detailPhotos").innerHTML = photos.map(photo => `
+        <article class="photo-card">
+          <div class="photo-frame">
+            ${photo.isDrive
+              ? `<iframe src="${escapeHtml(photo.preview)}" title="${escapeHtml(photo.label)}" loading="lazy" allow="autoplay"></iframe>`
+              : `<img src="${escapeHtml(photo.direct || photo.preview)}" alt="${escapeHtml(photo.label)}" loading="lazy" />`}
+          </div>
+          <div class="photo-footer">
+            <strong>${escapeHtml(photo.label)} · ${escapeHtml(photo.sucursal || "Sucursal")}</strong>
+            <a href="${escapeHtml(photo.url)}" target="_blank" rel="noopener">Abrir en Drive</a>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function openDetail(index) {
+      const item = currentSummary[index];
+      if (!item) return;
+      $("modalTitle").textContent = "Detalle de fotografías";
+      $("modalSubtitle").textContent = `${item.cliente || "Cliente"} · ${item.branchCount} sucursal${item.branchCount === 1 ? "" : "es"}`;
+      renderDetailInfo(item);
+      renderDetailBranches(item);
+      renderPhotos(item);
+      $("detailModal").classList.add("show");
+      document.body.classList.add("modal-open");
+    }
+    function closeDetail() {
+      $("detailModal").classList.remove("show");
+      document.body.classList.remove("modal-open");
+    }
+
+    function showApp() {
+      $("loadingOverlay").style.display = "none";
+      $("loadingOverlay").setAttribute("aria-busy", "false");
+      $("app").style.display = "block";
+    }
+    function showLoadingError(message) {
+      const overlay = $("loadingOverlay");
+      overlay.setAttribute("aria-busy", "false");
+      overlay.innerHTML = `<div class="loading-box"><strong>No se pudo cargar la información</strong><p>${escapeHtml(message)}</p></div>`;
+    }
+
+    function setupEvents() {
+      ["searchInput", "clientFilter", "sellerFilter", "communeFilter", "photoFilter"].forEach(id => {
+        $(id).addEventListener(id === "searchInput" ? "input" : "change", refresh);
+      });
+      $("resetBtn").addEventListener("click", () => {
+        $("searchInput").value = "";
+        $("clientFilter").value = "";
+        $("sellerFilter").value = "";
+        $("communeFilter").value = "";
+        $("photoFilter").value = "";
+        refresh();
+      });
+      $("logoutBtn").addEventListener("click", () => {
+        sessionStorage.removeItem(SESSION_KEY);
+        window.location.href = "index.html";
+      });
+      $("closeModalBtn").addEventListener("click", closeDetail);
+      $("detailModal").addEventListener("click", event => {
+        if (event.target === $("detailModal")) closeDetail();
+      });
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") closeDetail();
+      });
+    }
+
+    async function loadPhotoData() {
+      currentUser = getSessionUser();
+      if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+      }
+      try {
+        const response = await fetch(PHOTO_CSV_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Respuesta HTTP ${response.status}`);
+        const csvText = await response.text();
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            allRows = results.data.map(normalizeRow).filter(row => row.cliente || row.sucursal);
+            setupEvents();
+            populateFilters();
+            applyUserMode();
+            refresh();
+            showApp();
+          },
+          error: (error) => {
+            console.error(error);
+            showLoadingError("No se pudo procesar el CSV publicado.");
+          }
+        });
+      } catch (error) {
+        console.error(error);
+        showLoadingError("No se pudo cargar el CSV. Prueba publicar nuevamente la hoja o abrir este archivo desde un servidor web.");
+      }
+    }
+
+    loadPhotoData();
+  </script>
+</body>
+</html>

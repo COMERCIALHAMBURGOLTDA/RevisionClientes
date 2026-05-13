@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>Inicio - Revisión estado clientes</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --danger: #dc2626;
+      --shadow: 0 24px 80px rgba(15, 23, 42, .18);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(135deg, #172033 0%, #2563eb 100%);
+      overflow-x: hidden;
+    }
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    }
+    input, button { font: inherit; }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 16px;
+      color: var(--text);
+      outline: none;
+      min-height: 46px;
+    }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    button, .nav-button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 16px;
+      min-height: 48px;
+      background: var(--primary);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .shell { width: min(960px, 100%); }
+    .auth-card, .menu-card {
+      width: min(460px, 100%);
+      margin-inline: auto;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .menu-card { width: min(900px, 100%); }
+    h1, h2 { margin: 0 0 8px; letter-spacing: -.04em; }
+    h1 { font-size: clamp(28px, 6vw, 44px); color: white; text-align: center; margin-bottom: 8px; }
+    .intro { color: rgba(255,255,255,.82); text-align: center; margin: 0 auto 22px; max-width: 720px; line-height: 1.45; }
+    .auth-card h2, .menu-card h2 { font-size: clamp(24px, 6vw, 34px); }
+    .auth-card p, .menu-card p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .field { display: grid; gap: 6px; }
+    .field label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .auth-form { display: grid; gap: 14px; }
+    .auth-error {
+      display: none;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .auth-error.show { display: block; }
+    .show-password-row, .remember-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      user-select: none;
+    }
+    .show-password-row input, .remember-row input {
+      width: auto;
+      min-height: auto;
+      margin: 2px 0 0;
+      accent-color: var(--primary);
+    }
+    .hidden { display: none !important; }
+    .menu-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .session-pill {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 11px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .logout-btn {
+      width: auto;
+      min-height: auto;
+      background: #172033;
+      padding: 9px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .module-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .06);
+      display: grid;
+      gap: 12px;
+      align-content: space-between;
+      min-height: 210px;
+    }
+    .module-card strong { display: block; font-size: 20px; letter-spacing: -.02em; }
+    .module-card span { color: var(--muted); line-height: 1.45; font-size: 14px; }
+    .nav-button.secondary { background: #172033; }
+    .loading-box {
+      width: min(460px, 100%);
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      text-align: center;
+    }
+    .loader {
+      width: 42px;
+      height: 42px;
+      border: 4px solid #dbeafe;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 720px) {
+      .module-grid { grid-template-columns: 1fr; }
+      .auth-card, .menu-card { padding: 20px; border-radius: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1>REVISION ESTADO CLIENTES</h1>
+    <p class="intro">Inicia sesión y selecciona el módulo que deseas revisar.</p>
+
+    <section id="loadingView" class="loading-box" aria-live="polite" aria-busy="true">
+      <div class="loader" aria-hidden="true"></div>
+      <strong>Cargando acceso...</strong>
+      <p>Estamos verificando la información de usuarios.</p>
+    </section>
+
+    <section id="loginView" class="auth-card hidden" aria-live="polite">
+      <h2>Ingreso vendedores</h2>
+      <p>Ingresa tu código y contraseña. El usuario ADMIN puede ingresar a todos los módulos.</p>
+      <form id="loginForm" class="auth-form">
+        <div class="field">
+          <label>Código</label>
+          <input id="loginCode" type="text" placeholder="Ej: V03 o ADMIN" autocomplete="username" autocapitalize="characters" />
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
+        </div>
+        <label class="show-password-row">
+          <input id="showPassword" type="checkbox" />
+          <span>Mostrar contraseña</span>
+        </label>
+        <label class="remember-row">
+          <input id="rememberLogin" type="checkbox" />
+          <span>Recordar usuario y contraseña en este dispositivo</span>
+        </label>
+        <div id="loginError" class="auth-error">Código o contraseña incorrectos.</div>
+        <button id="loginBtn" type="submit">Ingresar</button>
+      </form>
+    </section>
+
+    <section id="menuView" class="menu-card hidden" aria-live="polite">
+      <div class="menu-top">
+        <div>
+          <h2>Panel principal</h2>
+          <p>Selecciona la ventana o módulo que deseas abrir. La sesión se mantiene para el módulo seleccionado.</p>
+          <span id="sessionText" class="session-pill">Sesión iniciada</span>
+        </div>
+        <button id="logoutBtn" class="logout-btn" type="button">Cerrar sesión</button>
+      </div>
+
+      <div class="module-grid">
+        <article class="module-card">
+          <div>
+            <strong>Cheques</strong>
+            <span>Abre el panel actual de revisión de estado de clientes, con filtros, KPIs, alertas y detalle por cliente.</span>
+          </div>
+          <a class="nav-button" href="cheques.html">Ingresar a cheques</a>
+        </article>
+
+        <article class="module-card">
+          <div>
+            <strong>Fotografías de cédulas</strong>
+            <span>Abre el nuevo módulo separado para fotografías de cédulas.</span>
+          </div>
+          <a class="nav-button secondary" href="fotografias_cheques.html">Ingresar a fotografías</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const AUTH_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHUqEKj9bpLZr_FSKKV2Jx8TjxZK3zgwDxzeBu0Ur2GvbUwHgN47r-EonBoE2EW7mS7ealNQlNaGNU/pub?gid=366975486&single=true&output=csv";
+    const SAVED_LOGIN_KEY = "revisionClientesSavedLogin";
+    const SESSION_KEY = "revisionClientesSession";
+    const LOGIN_LOG_URL = "https://script.google.com/macros/s/AKfycbwldb-WNRMxwcbvxHvdZTFiQErpOWUNKDMb4GjFvtTqY8vv4no7XCbpSS2VFIyENCJLyA/exec";
+
+    let users = [];
+    let currentUser = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function cleanText(value) {
+      return String(value ?? "").trim();
+    }
+
+    function normalizeCode(value) {
+      return cleanText(value).toUpperCase();
+    }
+
+    function showView(id) {
+      ["loadingView", "loginView", "menuView"].forEach(viewId => $(viewId).classList.toggle("hidden", viewId !== id));
+    }
+
+    function loadSavedLogin() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SAVED_LOGIN_KEY) || "null");
+        if (!saved) return;
+        $("loginCode").value = saved.code || "";
+        $("loginPassword").value = saved.password || "";
+        $("rememberLogin").checked = Boolean(saved.code && saved.password);
+      } catch (error) {
+        console.warn("No se pudo leer el login guardado", error);
+        localStorage.removeItem(SAVED_LOGIN_KEY);
+      }
+    }
+
+    function saveLoginPreference(code, password) {
+      if ($("rememberLogin").checked) {
+        localStorage.setItem(SAVED_LOGIN_KEY, JSON.stringify({ code, password }));
+      } else {
+        localStorage.removeItem(SAVED_LOGIN_KEY);
+      }
+    }
+
+    function registrarLogin(usuario) {
+      if (!LOGIN_LOG_URL) return;
+      const now = new Date();
+      const fecha = now.toLocaleDateString("es-CL");
+      const hora = now.toLocaleTimeString("es-CL", { hour12: false });
+      fetch(LOGIN_LOG_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ usuario, fecha, hora })
+      }).catch(error => console.warn("No se pudo registrar el login", error));
+    }
+
+    function setSession(user) {
+      currentUser = user;
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        code: user.code,
+        role: user.role,
+        loginAt: new Date().toISOString()
+      }));
+      const label = user.role === "admin" ? "Supervisor" : "Vendedor";
+      $("sessionText").textContent = `${label}: ${user.code}`;
+      showView("menuView");
+    }
+
+    function getSessionUser() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+        if (!saved || !saved.code || !saved.role) return null;
+        return {
+          code: normalizeCode(saved.code),
+          role: saved.role === "admin" ? "admin" : "seller"
+        };
+      } catch (error) {
+        sessionStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      sessionStorage.removeItem(SESSION_KEY);
+      $("loginError").classList.remove("show");
+      $("showPassword").checked = false;
+      $("loginPassword").type = "password";
+      loadSavedLogin();
+      if (!$("rememberLogin").checked) {
+        $("loginCode").value = "";
+        $("loginPassword").value = "";
+      }
+      showView("loginView");
+      setTimeout(() => $("loginCode").focus(), 60);
+    }
+
+    async function loadUsers() {
+      const response = await fetch(AUTH_CSV_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Respuesta HTTP usuarios ${response.status}`);
+      const csvText = await response.text();
+      return new Promise((resolve, reject) => {
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            users = results.data.map(row => {
+              const code = normalizeCode(row.CODIGO);
+              return {
+                code,
+                password: cleanText(row["CONTRASEÑA"] || row.CONTRASENA || row.PASSWORD),
+                role: code === "ADMIN" ? "admin" : "seller"
+              };
+            }).filter(u => u.code && u.password);
+            resolve(users);
+          },
+          error: reject
+        });
+      });
+    }
+
+    function setupLogin() {
+      loadSavedLogin();
+
+      $("showPassword").addEventListener("change", () => {
+        $("loginPassword").type = $("showPassword").checked ? "text" : "password";
+      });
+
+      $("rememberLogin").addEventListener("change", () => {
+        if (!$("rememberLogin").checked) localStorage.removeItem(SAVED_LOGIN_KEY);
+      });
+
+      $("loginForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const code = normalizeCode($("loginCode").value);
+        const password = cleanText($("loginPassword").value);
+        const user = users.find(u => u.code === code && u.password === password);
+
+        if (!user) {
+          $("loginError").classList.add("show");
+          $("loginPassword").value = "";
+          $("loginPassword").focus();
+          return;
+        }
+
+        saveLoginPreference(code, password);
+        registrarLogin(user.code);
+        $("loginError").classList.remove("show");
+        if (!$("rememberLogin").checked) $("loginPassword").value = "";
+        setSession(user);
+      });
+
+      $("logoutBtn").addEventListener("click", logout);
+    }
+
+    async function init() {
+      setupLogin();
+      try {
+        await loadUsers();
+        const savedSession = getSessionUser();
+        if (savedSession) {
+          setSession(savedSession);
+        } else {
+          showView("loginView");
+          setTimeout(() => {
+            const target = $("loginCode").value ? $("loginPassword") : $("loginCode");
+            target.focus();
+          }, 60);
+        }
+      } catch (error) {
+        console.error(error);
+        $("loadingView").innerHTML = `<strong>No se pudo cargar el acceso</strong><p>Revisa la conexión o abre estos archivos con Live Server.</p>`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
